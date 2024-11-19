@@ -55,19 +55,22 @@ optional arguments:
 
 required arguments:
   --project-id PROJECT_ID
-                        Google Cloud project ID/number (cross-project migration isn't supported), for example `datastream-proj` or `5131556981`.
+                        Google Cloud project ID/number (cross-project migration isn't supported), for example `bonio-da` or `953933740389`.
   --stream-id STREAM_ID
-                        Datastream stream ID, for example `mysql-to-bigquery`.
+                        Datastream stream ID, for example `pagamo-develop-mysql`.
   --datastream-region DATASTREAM_REGION
-                        Datastream stream location, for example `us-central1`.
+                        Datastream stream location, for example `asia-east1`.
   --source-schema-name SOURCE_SCHEMA_NAME
-                        Source schema name, for example `my_db`.
+                        Source schema name, for example `pagamo_develop`.
   --source-table-name SOURCE_TABLE_NAME
-                        Source table name, for example `my_table`.
+                        Source table name in the source schema, for example `users`.
   --bigquery-source-dataset-name BIGQUERY_SOURCE_DATASET_NAME
-                        BigQuery dataset name of the existing BigQuery table, for example `dataflow_dataset`.
+                        BigQuery dataset name of the existing BigQuery Binlog table, for example `L1_Develop_Main_Staging`.
   --bigquery-source-table-name BIGQUERY_SOURCE_TABLE_NAME
-                        The name of the existing BigQuery table, for example `dataflow_table`.
+                        The name of the existing BigQuery Binlog table, for example `users_log`.
+  --bigquery-destination-dataset-name BIGQUERY_DESTINATION_DATASET_NAME
+                        BigQuery dataset name of the new BigQuery table, for example `L1_Develop_Main_Binlog`.
+
 ```
 ## Setup
 The most convenient way to run the migration toolkit is by using `docker`:
@@ -120,6 +123,7 @@ You're all set!
       --source-table-name <SOURCE_TABLE_NAME> \
       --bigquery-source-dataset-name <BIGQUERY_SOURCE_DATASET_NAME> \
       --bigquery-source-table-name <BIGQUERY_SOURCE_TABLE_NAME>
+      --bigquery-destination-dataset-name <BIGQUERY_DESTINATION_DATASET_NAME>
       ```
    2. Inspect the `.sql` files under `output/create_target_table` and `output/copy_rows`. These are the SQL commands that will be executed on your Google Cloud project:
       ```
@@ -137,7 +141,8 @@ You're all set!
       --source-schema-name <SOURCE_SCHEMA_NAME> \
       --source-table-name <SOURCE_TABLE_NAME> \
       --bigquery-source-dataset-name <BIGQUERY_SOURCE_DATASET_NAME> \
-      --bigquery-source-table-name <BIGQUERY_SOURCE_TABLE_NAME>
+      --bigquery-source-table-name <BIGQUERY_SOURCE_TABLE_NAME> \
+      --bigquery-destination-dataset-name <BIGQUERY_DESTINATION_DATASET_NAME>
       ```
 
 5. Resume the stream paused in step 2.
