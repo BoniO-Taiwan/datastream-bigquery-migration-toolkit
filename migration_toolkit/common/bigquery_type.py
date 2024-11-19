@@ -27,6 +27,8 @@ class BigQueryType(Enum):
   NUMERIC = "NUMERIC"
   BIGNUMERIC = "BIGNUMERIC"
   JSON = "JSON"
+  ARRAY = "ARRAY"
+  ARRAY_STRING = "ARRAY<STRING>"
 
   def with_precision_and_scale(self, p, s) -> str:
     return f"{self.value}({p}, {s})"

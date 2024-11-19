@@ -42,12 +42,16 @@ class DynamicDatasetsCreateTable(BaseCreateTable):
       bigquery_region: str,
       bigquery_kms_key_name: str,
       bigquery_dataset_name: str,
+      bigquery_destination_dataset_id: str,
   ):
     self.bigquery_region = bigquery_region
     self.bigquery_kms_key_name = bigquery_kms_key_name
     self.dataset_name = bigquery_dataset_name
     table_name = dynamic_datasets_table_name(
         source_table_name=source_table_name
+    )
+    fully_qualified_bigquery_table_name = (
+        f"{project_id}.{bigquery_destination_dataset_id}.{source_schema_name}_{source_table_name}"
     )
     super().__init__(
         source_type=source_type,
@@ -57,12 +61,9 @@ class DynamicDatasetsCreateTable(BaseCreateTable):
         source_table_name=source_table_name,
         project_id=project_id,
         bigquery_max_staleness_seconds=bigquery_max_staleness_seconds,
-        fully_qualified_bigquery_table_name=project_id
-        + "."
-        + self.dataset_name
-        + "."
-        + table_name,
+        bigquery_destination_dataset_id=bigquery_destination_dataset_id,
     )
+    self.fully_qualified_bigquery_table_name = fully_qualified_bigquery_table_name
 
   def generate_ddl(
       self,

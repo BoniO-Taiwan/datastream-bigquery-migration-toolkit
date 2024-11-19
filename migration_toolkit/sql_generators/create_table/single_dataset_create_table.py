@@ -30,6 +30,7 @@ class SingleDatasetCreateTable(BaseCreateTable):
       source_schema_name: str,
       source_table_name: str,
       project_id: str,
+      bigquery_destination_dataset_id: str,
       bigquery_max_staleness_seconds: int,
       bigquery_dataset_name: str,
   ):
@@ -38,7 +39,7 @@ class SingleDatasetCreateTable(BaseCreateTable):
         source_table_name=source_table_name,
     )
     fully_qualified_bigquery_table_name = (
-        project_id + "." + bigquery_dataset_name + "." + bigquery_table_name
+        project_id + "." + bigquery_destination_dataset_id + "." + bigquery_dataset_name + "_" + bigquery_table_name
     )
 
     super().__init__(
@@ -48,8 +49,10 @@ class SingleDatasetCreateTable(BaseCreateTable):
         source_schema_name=source_schema_name,
         source_table_name=source_table_name,
         project_id=project_id,
+        bigquery_dataset_name=bigquery_dataset_name,
         bigquery_max_staleness_seconds=bigquery_max_staleness_seconds,
         fully_qualified_bigquery_table_name=fully_qualified_bigquery_table_name,
+        bigquery_destination_dataset_id=bigquery_destination_dataset_id,
     )
 
   def generate_ddl(

@@ -39,7 +39,16 @@ class DDLParser:
     return self._schema
 
   def get_fully_qualified_table_name(self):
-    return self._fully_qualified_table_name
+    # 假設 _fully_qualified_table_name 是 `project_id.dataset_id.table_id` 格式
+    parts = self._fully_qualified_table_name.split('.')
+    if len(parts) == 3:
+        project_id, dataset_id, table_id = parts
+    elif len(parts) == 2:
+        dataset_id, table_id = parts
+        project_id = "default_project"  # 如果沒有 project_id，設置一個默認值
+    else:
+        raise ValueError(f"Unexpected table name format: {self._fully_qualified_table_name}")
+    return f"{project_id}.{dataset_id}.{table_id}"
 
   @staticmethod
   def _to_fully_qualified_table_name(ddl: str) -> str:
@@ -73,22 +82,44 @@ class DDLParser:
   @staticmethod
   def _to_dict(schema):
     d = {}
+    inside_struct = False  # 用於追蹤是否在 STRUCT 中
+    struct_columns = []  # 用於儲存 STRUCT 內的欄位
     for column in schema:
-      column = DDLParser._strip_trailing_comma(column.strip())
-      name: str = DDLParser._column_name(column)
+        column = DDLParser._strip_trailing_comma(column.strip())
 
-      if DDLParser._is_metadata_column(name):
-        logger.debug(f"Skipping metadata column {column}")
-        continue
+        # 檢查 STRUCT 的開始和結束
+        if column.endswith("<"):
+            inside_struct = True
+            logger.debug(f"Entering struct: {column}")
+            struct_columns = []  # 初始化 STRUCT 內的欄位列表
+            continue
+        elif column == ">":
+            inside_struct = False
+            logger.debug(f"Exiting struct: {column}")
+            # 這裡可以處理 struct_columns 以獲取 STRUCT 內的欄位
+            # 例如，將其加入到 d 中，或進行其他處理
+            continue
 
-      try:
-        source_type: BigQueryType = DDLParser._column_schema(column)
-      except ValueError:
-        raise ValueError(
-            "Expected column description to in the format of '<column_name>"
-            f" <column_type>' but got: '{column}'"
-        )
-      d[name] = source_type
+        # 如果在 STRUCT 中，將欄位加入 struct_columns
+        if inside_struct:
+            logger.debug(f"Inside struct, processing column: {column}")
+            struct_columns.append(column)
+            continue
+
+        name: str = DDLParser._column_name(column)
+
+        if DDLParser._is_metadata_column(name):
+            logger.debug(f"Skipping metadata column {column}")
+            continue
+
+        try:
+            source_type: BigQueryType = DDLParser._column_schema(column)
+        except ValueError:
+            raise ValueError(
+                "Expected column description to be in the format of '<column_name>"
+                f" <column_type>' but got: '{column}'"
+            )
+        d[name] = source_type
 
     return d
 
@@ -103,14 +134,22 @@ class DDLParser:
   @staticmethod
   def _column_schema(column: str) -> BigQueryType:
     column_schema = column.split()[1:]
-    if column_schema[0].startswith("NUMERIC"):
-      return BigQueryType.NUMERIC
-    elif column_schema[0].startswith("BIGNUMERIC"):
-      return BigQueryType.BIGNUMERIC
-    elif column_schema[0].startswith("STRING"):
-      return BigQueryType.STRING
-    else:
-      return BigQueryType(column_schema[0])
+    if not column_schema:
+        raise ValueError(f"Column schema is empty for column: {column}")
+
+    try:
+        if column_schema[0].startswith("NUMERIC"):
+            return BigQueryType.NUMERIC
+        elif column_schema[0].startswith("BIGNUMERIC"):
+            return BigQueryType.BIGNUMERIC
+        elif column_schema[0].startswith("STRING"):
+            return BigQueryType.STRING
+        elif column_schema[0].startswith("ARRAY<STRING>"):
+            return BigQueryType.ARRAY_STRING
+        else:
+            return BigQueryType(column_schema[0])
+    except ValueError:
+        raise ValueError(f"Unexpected column type: {column_schema[0]}")
 
   @staticmethod
   def _column_name(column: str):

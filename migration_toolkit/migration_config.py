@@ -69,6 +69,8 @@ def _get_user_args():
   argparse_arguments.bigquery_source_dataset_name(required_args_parser)
   argparse_arguments.bigquery_source_table_name(required_args_parser)
 
+  argparse_arguments.bigquery_destination_dataset_id(required_args_parser)
+
   return parser.parse_args()
 
 
@@ -177,7 +179,8 @@ def _get_filepaths(args):
       ),
   )
 
-  bigquery_target_table_fully_qualified_name = f"{args['project_id']}.{args['bigquery_target_dataset_name']}.{args['bigquery_target_table_name']}"
+  #   bigquery_target_table_fully_qualified_name = f"{args['project_id']}.{args['bigquery_target_dataset_name']}.{args['bigquery_target_table_name']}"
+  bigquery_target_table_fully_qualified_name = f"{args['project_id']}.{args['bigquery_destination_dataset_id']}.{args['bigquery_target_dataset_name']}_{args['bigquery_target_table_name']}"
   bigquery_source_table_fully_qualified_name = f"{args['project_id']}.{args['bigquery_source_dataset_name']}.{args['bigquery_source_table_name']}"
 
   args["fetch_bigquery_source_table_ddl_filepath"] = os.path.join(
