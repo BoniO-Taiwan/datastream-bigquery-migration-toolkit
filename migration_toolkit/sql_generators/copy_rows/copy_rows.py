@@ -138,11 +138,9 @@ class CopyDataSQLGenerator:
       )
 
       if not destination_type:
-        raise ValueError(
-            "Column names must match in source and destination, but could not"
-            f" find column name {column_name} in destination table. Destination"
-            f" schema is {self.destination_ddl_parser.get_schema()}"
-        )
+        # 如果目標表格沒有這個欄位，就跳過不處理
+        logger.debug(f"跳過欄位 {column_name} - 在目標表格中不存在")
+        continue
       column_name = f"`{column_name}`"
 
       destination_columns.append(column_name)
