@@ -21,7 +21,7 @@ from sql_generators.copy_rows.ddl_parser import DDLParser
 logger = logging.getLogger(__name__)
 
 
-COPY_DATA_SQL = (
+COPY_DATA_SQL_WITH_UUID = (
     "INSERT INTO {destination_table}\n"
     "(\n"
     "  {destination_columns},\n"
@@ -30,7 +30,29 @@ COPY_DATA_SQL = (
     "SELECT\n"
     "  {source_columns},\n"
     "  STRUCT(\n"
-    "    _metadata_uuid as uuid,\n"
+    "    COALESCE(_metadata_uuid, CAST(NULL AS STRING)) as uuid,\n"
+    "    CAST(UNIX_SECONDS(_metadata_timestamp) * 1000 AS INTEGER) as source_timestamp,\n"
+    "    CAST(NULL AS STRING) as change_sequence_number,\n"
+    "    _metadata_change_type as change_type,\n"
+    "    [\n"
+    "      CAST(CAST(UNIX_SECONDS(_metadata_timestamp) * 1000 AS INTEGER) AS STRING),\n"
+    "      _metadata_log_file,\n"
+    "      CAST(_metadata_log_position AS STRING)\n"
+    "    ] as sort_keys\n"
+    "  ) AS datastream_metadata\n"
+    "FROM {source_table};"
+)
+
+COPY_DATA_SQL_WITHOUT_UUID = (
+    "INSERT INTO {destination_table}\n"
+    "(\n"
+    "  {destination_columns},\n"
+    "  datastream_metadata\n"
+    ")\n"
+    "SELECT\n"
+    "  {source_columns},\n"
+    "  STRUCT(\n"
+    "    CAST(NULL AS STRING) as uuid,\n"
     "    CAST(UNIX_SECONDS(_metadata_timestamp) * 1000 AS INTEGER) as source_timestamp,\n"
     "    CAST(NULL AS STRING) as change_sequence_number,\n"
     "    _metadata_change_type as change_type,\n"
@@ -139,7 +161,10 @@ class CopyDataSQLGenerator:
             ].format(column_name=column_name)
         )
 
-    sql = COPY_DATA_SQL.format(
+    has_metadata_uuid = "_metadata_uuid" in self.source_ddl_parser.get_schema()
+    sql_template = COPY_DATA_SQL_WITH_UUID if has_metadata_uuid else COPY_DATA_SQL_WITHOUT_UUID
+
+    sql = sql_template.format(
         destination_table=self.destination_ddl_parser.get_fully_qualified_table_name(),
         source_columns=",\n  ".join(source_columns),
         destination_columns=",\n  ".join(destination_columns),
