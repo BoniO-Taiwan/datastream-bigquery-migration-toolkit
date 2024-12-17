@@ -21,13 +21,47 @@ from sql_generators.copy_rows.ddl_parser import DDLParser
 logger = logging.getLogger(__name__)
 
 
-COPY_DATA_SQL = (
+COPY_DATA_SQL_WITH_UUID = (
     "INSERT INTO {destination_table}\n"
     "(\n"
-    "  {destination_columns}\n"
+    "  {destination_columns},\n"
+    "  datastream_metadata\n"
     ")\n"
     "SELECT\n"
-    "  {source_columns}\n"
+    "  {source_columns},\n"
+    "  STRUCT(\n"
+    "    COALESCE(_metadata_uuid, CAST(NULL AS STRING)) as uuid,\n"
+    "    CAST(UNIX_SECONDS(_metadata_timestamp) * 1000 AS INTEGER) as source_timestamp,\n"
+    "    CAST(NULL AS STRING) as change_sequence_number,\n"
+    "    _metadata_change_type as change_type,\n"
+    "    [\n"
+    "      CAST(CAST(UNIX_SECONDS(_metadata_timestamp) * 1000 AS INTEGER) AS STRING),\n"
+    "      COALESCE(_metadata_log_file, ''),\n"
+    "      COALESCE(CAST(_metadata_log_position AS STRING), '0')\n"
+    "    ] as sort_keys\n"
+    "  ) AS datastream_metadata\n"
+    "FROM {source_table};"
+)
+
+COPY_DATA_SQL_WITHOUT_UUID = (
+    "INSERT INTO {destination_table}\n"
+    "(\n"
+    "  {destination_columns},\n"
+    "  datastream_metadata\n"
+    ")\n"
+    "SELECT\n"
+    "  {source_columns},\n"
+    "  STRUCT(\n"
+    "    CAST(NULL AS STRING) as uuid,\n"
+    "    CAST(UNIX_SECONDS(_metadata_timestamp) * 1000 AS INTEGER) as source_timestamp,\n"
+    "    CAST(NULL AS STRING) as change_sequence_number,\n"
+    "    _metadata_change_type as change_type,\n"
+    "    [\n"
+    "      CAST(CAST(UNIX_SECONDS(_metadata_timestamp) * 1000 AS INTEGER) AS STRING),\n"
+    "      COALESCE(_metadata_log_file, ''),\n"
+    "      COALESCE(CAST(_metadata_log_position AS STRING), '0')\n"
+    "    ] as sort_keys\n"
+    "  ) AS datastream_metadata\n"
     "FROM {source_table};"
 )
 
@@ -104,11 +138,9 @@ class CopyDataSQLGenerator:
       )
 
       if not destination_type:
-        raise ValueError(
-            "Column names must match in source and destination, but could not"
-            f" find column name {column_name} in destination table. Destination"
-            f" schema is {self.destination_ddl_parser.get_schema()}"
-        )
+        # 如果目標表格沒有這個欄位，就跳過不處理
+        logger.debug(f"跳過欄位 {column_name} - 在目標表格中不存在")
+        continue
       column_name = f"`{column_name}`"
 
       destination_columns.append(column_name)
@@ -127,7 +159,10 @@ class CopyDataSQLGenerator:
             ].format(column_name=column_name)
         )
 
-    sql = COPY_DATA_SQL.format(
+    has_metadata_uuid = "_metadata_uuid" in self.source_ddl_parser.get_schema()
+    sql_template = COPY_DATA_SQL_WITH_UUID if has_metadata_uuid else COPY_DATA_SQL_WITHOUT_UUID
+
+    sql = sql_template.format(
         destination_table=self.destination_ddl_parser.get_fully_qualified_table_name(),
         source_columns=",\n  ".join(source_columns),
         destination_columns=",\n  ".join(destination_columns),

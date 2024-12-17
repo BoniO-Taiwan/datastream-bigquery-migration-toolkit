@@ -21,15 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 class DynamicDatasetsCreateTable(BaseCreateTable):
-  CREATE_DATASET_DDL_TEMPLATE = (
-      "CREATE SCHEMA IF NOT EXISTS `{dataset_name}`"
-      " OPTIONS(location='{location}')"
-  )
-  CREATE_DATASET_DDL_WITH_KMS_TEMPLATE = (
-      "CREATE SCHEMA IF NOT EXISTS `{dataset_name}`"
-      " OPTIONS(location='{location}', default_kms_key_name='{kms_key_name}')"
-  )
-
   def __init__(
       self,
       source_type: SourceType,
@@ -42,12 +33,16 @@ class DynamicDatasetsCreateTable(BaseCreateTable):
       bigquery_region: str,
       bigquery_kms_key_name: str,
       bigquery_dataset_name: str,
+      bigquery_destination_dataset_id: str,
   ):
     self.bigquery_region = bigquery_region
     self.bigquery_kms_key_name = bigquery_kms_key_name
     self.dataset_name = bigquery_dataset_name
     table_name = dynamic_datasets_table_name(
         source_table_name=source_table_name
+    )
+    fully_qualified_bigquery_table_name = (
+        f"{project_id}.{bigquery_destination_dataset_id}.{source_schema_name}_{source_table_name}"
     )
     super().__init__(
         source_type=source_type,
@@ -57,35 +52,12 @@ class DynamicDatasetsCreateTable(BaseCreateTable):
         source_table_name=source_table_name,
         project_id=project_id,
         bigquery_max_staleness_seconds=bigquery_max_staleness_seconds,
-        fully_qualified_bigquery_table_name=project_id
-        + "."
-        + self.dataset_name
-        + "."
-        + table_name,
+        bigquery_destination_dataset_id=bigquery_destination_dataset_id,
     )
+    self.fully_qualified_bigquery_table_name = fully_qualified_bigquery_table_name
 
   def generate_ddl(
       self,
   ):
-    create_dataset_ddl = self._generate_create_dataset_ddl()
     create_table_ddl = self._generate_create_table_ddl()
-
-    self._write_to_file("\n".join([create_dataset_ddl + ";", create_table_ddl]))
-
-  def _generate_create_dataset_ddl(self):
-    fully_qualified_dataset_name = self.project_id + "." + self.dataset_name
-
-    if self.bigquery_kms_key_name:
-      create_dataset_ddl = self.CREATE_DATASET_DDL_WITH_KMS_TEMPLATE.format(
-          dataset_name=fully_qualified_dataset_name,
-          location=self.bigquery_region,
-          kms_key_name=self.bigquery_kms_key_name,
-      )
-    else:
-      create_dataset_ddl = self.CREATE_DATASET_DDL_TEMPLATE.format(
-          dataset_name=fully_qualified_dataset_name,
-          location=self.bigquery_region,
-      )
-
-    logger.info(f"Generated create dataset DDL: {create_dataset_ddl}")
-    return create_dataset_ddl
+    self._write_to_file(create_table_ddl)

@@ -41,6 +41,8 @@ def main():
   config: argparse.Namespace = get_config()
   logger.debug(f"Using config {vars(config)}")
 
+  bigquery_destination_dataset_id = config.bigquery_destination_dataset_id
+
   _add_stream_label(
       stream=config.stream,
       datastream_api_endpoint_override=config.datastream_api_endpoint_override,
@@ -69,6 +71,7 @@ def main():
         source_table_name=config.source_table_name,
         source_schema_name=config.source_schema_name,
         bigquery_dataset_name=config.bigquery_target_dataset_name,
+        bigquery_destination_dataset_id=bigquery_destination_dataset_id,
         bigquery_max_staleness_seconds=config.bigquery_max_staleness_seconds,
         project_id=config.project_id,
     )
@@ -85,6 +88,7 @@ def main():
         bigquery_region=config.bigquery_region,
         bigquery_kms_key_name=config.bigquery_kms_key_name,
         bigquery_dataset_name=config.bigquery_target_dataset_name,
+        bigquery_destination_dataset_id=bigquery_destination_dataset_id,
     )
 
   table_creator.generate_ddl()

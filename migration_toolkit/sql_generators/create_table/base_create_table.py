@@ -31,20 +31,36 @@ class BaseCreateTable(ABC):
       "CREATE TABLE `{table_name}` \n"
       "(\n"
       "  {columns},\n"
-      "  PRIMARY KEY({primary_keys}) NOT ENFORCED\n"
+      "  datastream_metadata STRUCT<\n"
+      "    uuid STRING,\n"
+      "    source_timestamp INT64,\n"
+      "    change_sequence_number STRING,\n"
+      "    change_type STRING,\n"
+      "    sort_keys ARRAY<STRING>\n"
+      "  >,\n"
+      "  PRIMARY KEY({primary_keys}) NOT ENFORCED,\n"
       ")\n"
+      "PARTITION BY _PARTITIONDATE\n"
       "CLUSTER BY {clustering_keys}\n"
       "OPTIONS(\n"
-      "  max_staleness=MAKE_INTERVAL(0, 0, 0, 0, 0, {max_staleness})\n"
+      "  max_staleness=MAKE_INTERVAL(0, 0, 0, 0, 0, 0)\n"
       ");"
   )
   CREATE_TABLE_WITHOUT_PRIMARY_KEYS_DDL_TEMPLATE = (
       "CREATE TABLE `{table_name}` \n"
       "(\n"
-      "  {columns}\n"
+      "  {columns},\n"
+      "  datastream_metadata STRUCT<\n"
+      "    uuid STRING,\n"
+      "    source_timestamp INT64,\n"
+      "    change_sequence_number STRING,\n"
+      "    change_type STRING,\n"
+      "    sort_keys ARRAY<STRING>\n"
+      "  >\n"
       ")\n"
-      " OPTIONS(\n"
-      "  max_staleness=MAKE_INTERVAL(0, 0, 0, 0, 0, {max_staleness})\n"
+      "PARTITION BY _PARTITIONDATE\n"
+      "OPTIONS(\n"
+      "  max_staleness=MAKE_INTERVAL(0, 0, 0, 0, 0, 0)\n"
       ");"
   )
 
@@ -57,7 +73,7 @@ class BaseCreateTable(ABC):
       source_table_name: str,
       project_id: str,
       bigquery_max_staleness_seconds: int,
-      fully_qualified_bigquery_table_name: str,
+      bigquery_destination_dataset_id: str,
   ):
     self.source_type: SourceType = source_type
     self.discover_result_parser: DiscoverResultParser = DiscoverResultParser(
@@ -68,8 +84,9 @@ class BaseCreateTable(ABC):
     self.source_table_name: str = source_table_name
     self.project_id: str = project_id
     self.bigquery_max_staleness_seconds: int = bigquery_max_staleness_seconds
+    self.bigquery_destination_dataset_id: str = bigquery_destination_dataset_id
     self.fully_qualified_bigquery_table_name: str = (
-        fully_qualified_bigquery_table_name
+        f"{project_id}.{bigquery_destination_dataset_id}.{source_schema_name}_{source_table_name}"
     )
 
   def get_fully_qualified_bigquery_table_name(self):

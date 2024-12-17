@@ -19,4 +19,4 @@ COPY LICENSE /
 COPY README.md /
 COPY CONTRIBUTING.md /
 
-RUN pip install -r ./migration/requirements.txt
+RUN pip install -r ./migration/requirements.txt --break-system-packages

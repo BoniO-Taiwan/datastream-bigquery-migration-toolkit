@@ -123,3 +123,10 @@ def bigquery_source_table_name(parser):
           " `dataflow_table`."
       ),
   )
+
+def bigquery_destination_dataset_id(parser):
+  parser.add_argument(
+      "--bigquery-destination-dataset-id",
+      required=True,
+      help="The BigQuery destination dataset ID.",
+  )
